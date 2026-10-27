@@ -525,3 +525,6 @@ h1,h2{hyphens:auto;-webkit-hyphens:auto;overflow-wrap:break-word}
 .footer-contact svg{width:18px;height:18px;flex:none;color:var(--night-oak)}
 @media (max-width:860px){.footer-grid{grid-template-columns:1fr 1fr}}
 @media (max-width:480px){.footer-contact ul{display:grid;grid-template-columns:1fr}.footer-contact a{width:100%}}
+
+.hp{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+.form button[disabled]{opacity:.6;cursor:progress}
