@@ -164,15 +164,18 @@
     });
   }
 
-  /* Anfrageformular: baut eine E-Mail im eigenen Mailprogramm – keine Datenspeicherung auf dem Server */
+  /* Anfrageformular: sendet die Anfrage an /api/contact (Versand per Resend) */
   var form = document.getElementById('anfrage');
   var status = document.getElementById('form-status');
+  var startedAt = Date.now();
   function setStatus(text, type) {
     status.hidden = false;
     status.className = 'form-status ' + type;
     status.textContent = text;
   }
   if (form) {
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var submitLabel = submitBtn ? submitBtn.innerHTML : '';
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var name = form.elements.name, mail = form.elements.email, msg = form.elements.nachricht, consent = form.elements.consent;
@@ -188,21 +191,35 @@
         bad.focus();
         return;
       }
-      var lines = [
-        'Name: ' + name.value.trim(),
-        'Telefon: ' + (form.elements.telefon.value.trim() || '–'),
-        'E-Mail: ' + mail.value.trim(),
-        'Ort / PLZ: ' + (form.elements.ort.value.trim() || '–'),
-        'Gewünschter Belag: ' + form.elements.leistung.value,
-        'Fläche ca.: ' + (form.elements.flaeche.value.trim() ? form.elements.flaeche.value.trim() + ' m²' : '–'),
-        '',
-        msg.value.trim()
-      ];
-      var href = 'mailto:info@eno-fussbodenbau.de'
-        + '?subject=' + encodeURIComponent('Anfrage über die Website – ' + name.value.trim())
-        + '&body=' + encodeURIComponent(lines.join('\n'));
-      setStatus('Ihr E-Mail-Programm wird mit der vorbereiteten Anfrage geöffnet. Bitte dort auf „Senden“ tippen. Falls sich nichts öffnet, schreiben Sie direkt an info@eno-fussbodenbau.de oder rufen Sie an: 0172 2446372.', 'ok');
-      window.location.href = href;
+      var payload = {
+        name: name.value.trim(),
+        telefon: form.elements.telefon.value.trim(),
+        email: mail.value.trim(),
+        ort: form.elements.ort.value.trim(),
+        leistung: form.elements.leistung.value,
+        flaeche: form.elements.flaeche.value.trim(),
+        nachricht: msg.value.trim(),
+        consent: consent.checked,
+        website: form.elements.website ? form.elements.website.value : '',
+        t: startedAt
+      };
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Wird gesendet …'; }
+      setStatus('Ihre Anfrage wird gesendet …', 'ok');
+      fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json().catch(function () { return { ok: false }; }).then(function (d) { return { ok: r.ok && d.ok, d: d }; }); })
+        .then(function (res) {
+          if (res.ok) {
+            form.reset();
+            startedAt = Date.now();
+            setStatus('Vielen Dank! Ihre Anfrage ist bei uns eingegangen. Wir melden uns schnellstmöglich bei Ihnen.', 'ok');
+          } else {
+            setStatus((res.d && res.d.error ? res.d.error + ' ' : 'Die Anfrage konnte nicht gesendet werden. ') + 'Bitte versuchen Sie es erneut oder erreichen Sie uns direkt: 0172 2446372 oder info@eno-fussbodenbau.de.', 'error');
+          }
+        })
+        .catch(function () {
+          setStatus('Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut oder erreichen Sie uns direkt: 0172 2446372 oder info@eno-fussbodenbau.de.', 'error');
+        })
+        .then(function () { if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = submitLabel; } });
     });
   }
 })();
